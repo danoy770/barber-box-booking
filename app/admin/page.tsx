@@ -273,6 +273,29 @@ export default function AdminPage() {
     return hours
   }
 
+  // Générer les heures avec intervalles de 5 minutes (pour le formulaire)
+  const generateTimeOptions = () => {
+    const options = []
+    for (let h = START_HOUR; h <= END_HOUR; h++) {
+      for (let m = 0; m < 60; m += 5) {
+        const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
+        options.push(timeStr)
+      }
+    }
+    return options
+  }
+
+  // Arrondir une heure à l'intervalle de 5 minutes le plus proche
+  const roundToNearest5Minutes = (timeStr: string): string => {
+    if (!timeStr) return ''
+    const [hours, minutes] = timeStr.split(':').map(Number)
+    const roundedMinutes = Math.round(minutes / 5) * 5
+    if (roundedMinutes >= 60) {
+      return `${(hours + 1).toString().padStart(2, '0')}:00`
+    }
+    return `${hours.toString().padStart(2, '0')}:${roundedMinutes.toString().padStart(2, '0')}`
+  }
+
   // Convertir une heure (HH:mm) en minutes depuis minuit
   const timeToMinutes = (timeStr: string): number => {
     const [hours, minutes] = timeStr.split(':').map(Number)
@@ -452,10 +475,10 @@ export default function AdminPage() {
 
   // Si non authentifié, afficher le formulaire de connexion
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="w-full px-2 py-3 space-y-3">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 w-full overflow-x-hidden">
+      <div className="w-full py-2 space-y-2">
         {/* Header */}
-        <div className="flex items-center justify-between px-2">
+        <div className="flex items-center justify-between px-3">
           <div>
             <h1 className="text-2xl font-bold text-white">ניהול תורים</h1>
             <p className="text-xs text-slate-400 mt-1">Barber Box</p>
@@ -463,8 +486,8 @@ export default function AdminPage() {
         </div>
 
         {/* Barre de navigation des jours - Agrandie pour mobile */}
-        <Card className="shadow-lg bg-slate-800 border-slate-700">
-          <CardContent className="py-3">
+        <Card className="shadow-lg bg-slate-800 border-slate-700 mx-0">
+          <CardContent className="py-3 px-2">
             <div className="flex items-center justify-between gap-2" dir="rtl">
               {/* Barre de jours horizontale - Boutons tactiles agrandis */}
               <div className="flex-1 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -512,32 +535,32 @@ export default function AdminPage() {
         </Card>
 
         {/* Vue Agenda (Time Grid) */}
-        <Card className="shadow-lg bg-slate-800 border-slate-700">
-          <CardHeader className="px-3 py-3">
+        <Card className="shadow-lg bg-slate-800 border-slate-700 mx-0">
+          <CardHeader className="px-3 py-2">
             <CardTitle className="flex items-center gap-2 text-white text-base">
               <Calendar className="w-4 h-4" />
               תורים ל-{formatDateHuman(selectedDate)} ({sortedAppointments.length})
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {isLoading ? (
               <div className="text-center py-12">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white mb-4"></div>
                 <p className="text-slate-400">טוען תורים...</p>
               </div>
             ) : (
-              <div className="relative" dir="rtl">
+              <div className="relative w-full" dir="rtl">
                 {/* Conteneur principal de l'agenda - Scroll fluide avec inertie */}
                 <div 
-                  className="relative bg-slate-900 rounded-lg overflow-y-auto touch-pan-y"
+                  className="relative bg-slate-900 overflow-y-auto touch-pan-y w-full"
                   style={{ 
-                    maxHeight: 'calc(100vh - 250px)',
+                    maxHeight: 'calc(100vh - 220px)',
                     minHeight: '400px',
                     WebkitOverflowScrolling: 'touch',
                     scrollBehavior: 'smooth'
                   }}
                 >
-                  <div className="relative" style={{ height: `${GRID_TOTAL_HEIGHT}px` }}>
+                  <div className="relative w-full" style={{ height: `${GRID_TOTAL_HEIGHT}px` }}>
                   {/* Lignes horizontales pour chaque heure */}
                   {generateTimeSlots().map((time, index) => (
                     <div
@@ -547,7 +570,7 @@ export default function AdminPage() {
                     ></div>
                   ))}
 
-                  {/* Colonne des heures à droite (réduite pour mobile) */}
+                  {/* Colonne des heures à droite (réduite pour mobile) - Collée au bord */}
                   <div className="absolute right-0 top-0 bottom-0 w-12 border-l border-slate-700 z-10 bg-slate-800/50">
                     {generateTimeSlots().map((time, index) => (
                       <div
@@ -560,8 +583,8 @@ export default function AdminPage() {
                     ))}
                   </div>
 
-                  {/* Zone des rendez-vous - Largeur 100% sur mobile */}
-                  <div className="pr-12 relative" style={{ height: `${GRID_TOTAL_HEIGHT}px` }}>
+                  {/* Zone des rendez-vous - Largeur 100% jusqu'au bord gauche */}
+                  <div className="pr-12 relative w-full" style={{ height: `${GRID_TOTAL_HEIGHT}px` }}>
                     {/* Ligne "Maintenant" */}
                     {getCurrentTimePositionPx() !== null && (
                       <div
@@ -700,10 +723,10 @@ export default function AdminPage() {
 
         {/* Bouton Retour à aujourd'hui */}
         {selectedDate !== getLocalDateString(new Date()) && (
-          <div className="flex justify-center pb-6">
+          <div className="flex justify-center pb-4 px-3">
             <Button
               onClick={handleBackToToday}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 flex items-center gap-2"
+              className="bg-blue-600 active:bg-blue-700 text-white font-semibold px-6 py-3 flex items-center gap-2 touch-manipulation"
             >
               <Calendar className="w-4 h-4" />
               חזרה להיום
@@ -751,17 +774,28 @@ export default function AdminPage() {
                     />
                   </div>
 
-                  {/* Heure */}
+                  {/* Heure - Select avec intervalles de 5 minutes */}
                   <div className="space-y-2">
                     <Label htmlFor="time" className="text-slate-300">שעה</Label>
-                    <Input
+                    <select
                       id="time"
-                      type="time"
                       value={newAppointment.time}
-                      onChange={(e) => setNewAppointment(prev => ({ ...prev, time: e.target.value }))}
-                      className="bg-slate-700 border-slate-600 text-white"
+                      onChange={(e) => {
+                        const selectedTime = e.target.value
+                        // Arrondir automatiquement si nécessaire
+                        const roundedTime = roundToNearest5Minutes(selectedTime)
+                        setNewAppointment(prev => ({ ...prev, time: roundedTime }))
+                      }}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       required
-                    />
+                    >
+                      <option value="">בחר שעה</option>
+                      {generateTimeOptions().map((time) => (
+                        <option key={time} value={time} className="bg-slate-700">
+                          {time}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Service */}
