@@ -297,17 +297,6 @@ export default function AdminPage() {
     return hours
   }
 
-  // Arrondir une heure à l'intervalle de 5 minutes le plus proche
-  const roundToNearest5Minutes = (timeStr: string): string => {
-    if (!timeStr) return ''
-    const [hours, minutes] = timeStr.split(':').map(Number)
-    const roundedMinutes = Math.round(minutes / 5) * 5
-    if (roundedMinutes >= 60) {
-      return `${(hours + 1).toString().padStart(2, '0')}:00`
-    }
-    return `${hours.toString().padStart(2, '0')}:${roundedMinutes.toString().padStart(2, '0')}`
-  }
-
   // Convertir une heure (HH:mm) en minutes depuis minuit
   const timeToMinutes = (timeStr: string): number => {
     const [hours, minutes] = timeStr.split(':').map(Number)
