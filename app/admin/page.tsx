@@ -130,7 +130,8 @@ export default function AdminPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [newAppointment, setNewAppointment] = useState({
     date: getTodayLocal(),
-    time: '',
+    hour: '08',
+    minute: '00',
     service: '',
     clientName: '',
     clientPhone: ''
@@ -173,7 +174,7 @@ export default function AdminPage() {
 
   // Synchroniser la date du formulaire avec la date sélectionnée
   useEffect(() => {
-    setNewAppointment(prev => ({ ...prev, date: selectedDate }))
+    setNewAppointment(prev => ({ ...prev, date: selectedDate, hour: '08', minute: '00' }))
   }, [selectedDate])
 
   // Fermer le menu au clic extérieur
@@ -189,11 +190,33 @@ export default function AdminPage() {
     }
   }, [selectedAppointment])
 
+  // Arrondir une heure à l'intervalle de 5 minutes le plus proche
+  const roundToNearest5Minutes = (timeStr: string): { hour: string; minute: string } => {
+    if (!timeStr) return { hour: '08', minute: '00' }
+    const [hours, minutes] = timeStr.split(':').map(Number)
+    const roundedMinutes = Math.round(minutes / 5) * 5
+    let finalHour = hours
+    let finalMinute = roundedMinutes
+    
+    if (roundedMinutes >= 60) {
+      finalHour = hours + 1
+      finalMinute = 0
+    }
+    
+    return {
+      hour: finalHour.toString().padStart(2, '0'),
+      minute: finalMinute.toString().padStart(2, '0')
+    }
+  }
+
   // Fonction pour enregistrer un nouveau rendez-vous
   const handleSaveAppointment = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!newAppointment.time || !newAppointment.service || !newAppointment.clientName || !newAppointment.clientPhone) {
+    // Combiner hour et minute en time
+    const time = `${newAppointment.hour}:${newAppointment.minute}`
+    
+    if (!time || !newAppointment.service || !newAppointment.clientName || !newAppointment.clientPhone) {
       alert('נא למלא את כל השדות')
       return
     }
@@ -207,7 +230,7 @@ export default function AdminPage() {
           client_phone: newAppointment.clientPhone,
           service_name: newAppointment.service,
           date: newAppointment.date,
-          time: newAppointment.time,
+          time: time,
           stylist: 'Dan Cohen',
           service_duration: 30 // Durée par défaut, peut être ajustée
         }])
@@ -232,7 +255,8 @@ export default function AdminPage() {
         // Réinitialiser le formulaire et fermer le modal
         setNewAppointment({
           date: selectedDate,
-          time: '',
+          hour: '08',
+          minute: '00',
           service: '',
           clientName: '',
           clientPhone: ''
@@ -271,18 +295,6 @@ export default function AdminPage() {
       hours.push(`${h.toString().padStart(2, '0')}:00`)
     }
     return hours
-  }
-
-  // Générer les heures avec intervalles de 5 minutes (pour le formulaire)
-  const generateTimeOptions = () => {
-    const options = []
-    for (let h = START_HOUR; h <= END_HOUR; h++) {
-      for (let m = 0; m < 60; m += 5) {
-        const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
-        options.push(timeStr)
-      }
-    }
-    return options
   }
 
   // Arrondir une heure à l'intervalle de 5 minutes le plus proche
@@ -774,28 +786,52 @@ export default function AdminPage() {
                     />
                   </div>
 
-                  {/* Heure - Select avec intervalles de 5 minutes */}
+                  {/* Heure - Deux selects séparés */}
                   <div className="space-y-2">
-                    <Label htmlFor="time" className="text-slate-300">שעה</Label>
-                    <select
-                      id="time"
-                      value={newAppointment.time}
-                      onChange={(e) => {
-                        const selectedTime = e.target.value
-                        // Arrondir automatiquement si nécessaire
-                        const roundedTime = roundToNearest5Minutes(selectedTime)
-                        setNewAppointment(prev => ({ ...prev, time: roundedTime }))
-                      }}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    >
-                      <option value="">בחר שעה</option>
-                      {generateTimeOptions().map((time) => (
-                        <option key={time} value={time} className="bg-slate-700">
-                          {time}
-                        </option>
-                      ))}
-                    </select>
+                    <Label className="text-slate-300">שעה</Label>
+                    <div className="flex gap-3">
+                      {/* Select pour les heures */}
+                      <div className="flex-1">
+                        <select
+                          id="hour"
+                          value={newAppointment.hour}
+                          onChange={(e) => setNewAppointment(prev => ({ ...prev, hour: e.target.value }))}
+                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-md text-white text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation"
+                          required
+                        >
+                          {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => {
+                            const hour = START_HOUR + i
+                            return (
+                              <option key={hour} value={hour.toString().padStart(2, '0')} className="bg-slate-700">
+                                {hour.toString().padStart(2, '0')}
+                              </option>
+                            )
+                          })}
+                        </select>
+                      </div>
+                      
+                      {/* Séparateur */}
+                      <div className="flex items-center text-white text-xl font-bold">
+                        :
+                      </div>
+                      
+                      {/* Select pour les minutes */}
+                      <div className="flex-1">
+                        <select
+                          id="minute"
+                          value={newAppointment.minute}
+                          onChange={(e) => setNewAppointment(prev => ({ ...prev, minute: e.target.value }))}
+                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-md text-white text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation"
+                          required
+                        >
+                          {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((min) => (
+                            <option key={min} value={min.toString().padStart(2, '0')} className="bg-slate-700">
+                              {min.toString().padStart(2, '0')}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Service */}
