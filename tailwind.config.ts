@@ -10,6 +10,9 @@ const config = {
 	],
   prefix: "",
   theme: {
+    fontFamily: {
+      sans: ['Heebo', 'system-ui', '-apple-system', 'sans-serif'],
+    },
     container: {
       center: true,
       padding: "2rem",

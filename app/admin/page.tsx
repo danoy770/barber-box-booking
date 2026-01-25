@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Calendar, Clock, Trash2, Phone, CalendarDays, Plus, X, User } from "lucide-react"
+import { Calendar, Clock, Trash2, Phone, CalendarDays, Plus, X, User, ChevronLeft, ChevronRight } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
 // Type pour les rendez-vous
@@ -85,6 +85,13 @@ function formatDurationHebrew(minutes: number): string {
 // Générer toutes les durées disponibles de 5 en 5 minutes (de 5 min à 23h55 = 1435 min)
 const AVAILABLE_DURATIONS = Array.from({ length: Math.floor(1435 / 5) }, (_, i) => (i + 1) * 5)
 
+// Constantes pour les jours et mois en hébreu
+const DAYS_HEBREW = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"]
+const MONTHS_HEBREW = [
+  "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
+  "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר",
+]
+
 // Fonction pour formater la date en hébreu
 function formatDateHuman(dateStr: string) {
   if (!dateStr) return ""
@@ -123,16 +130,18 @@ function getDayName(date: Date): string {
   return days[date.getDay()]
 }
 
-// Fonction pour générer les 7 prochains jours
-function getNext7Days(): Array<{ date: Date; dateStr: string; dayName: string; dayNumber: number; isToday: boolean }> {
+// Fonction pour générer les 7 prochains jours (à partir d'une date de référence, ou aujourd'hui par défaut)
+function getNext7Days(referenceDate?: Date): Array<{ date: Date; dateStr: string; dayName: string; dayNumber: number; isToday: boolean }> {
   const days = []
+  const baseDate = referenceDate ? new Date(referenceDate) : new Date()
+  baseDate.setHours(0, 0, 0, 0)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const todayLocalStr = getLocalDateString(today)
   
   for (let i = 0; i < 7; i++) {
-    const date = new Date(today)
-    date.setDate(today.getDate() + i)
+    const date = new Date(baseDate)
+    date.setDate(baseDate.getDate() + i)
     const dateStr = getLocalDateString(date)
     const isToday = dateStr === todayLocalStr
     
@@ -141,6 +150,40 @@ function getNext7Days(): Array<{ date: Date; dateStr: string; dayName: string; d
       dateStr,
       dayName: getDayName(date),
       dayNumber: date.getDate(),
+      isToday
+    })
+  }
+  
+  return days
+}
+
+// Fonction pour obtenir la semaine (dimanche à samedi) contenant une date donnée
+function getWeekContainingDate(targetDate: Date): Array<{ date: Date; dateStr: string; dayName: string; dayNumber: number; isToday: boolean }> {
+  const days = []
+  const date = new Date(targetDate)
+  date.setHours(0, 0, 0, 0)
+  
+  // Trouver le dimanche de la semaine (jour 0 = dimanche)
+  const dayOfWeek = date.getDay()
+  const sunday = new Date(date)
+  sunday.setDate(date.getDate() - dayOfWeek)
+  
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const todayLocalStr = getLocalDateString(today)
+  
+  // Générer les 7 jours de la semaine (dimanche à samedi)
+  for (let i = 0; i < 7; i++) {
+    const weekDate = new Date(sunday)
+    weekDate.setDate(sunday.getDate() + i)
+    const dateStr = getLocalDateString(weekDate)
+    const isToday = dateStr === todayLocalStr
+    
+    days.push({
+      date: weekDate,
+      dateStr,
+      dayName: getDayName(weekDate),
+      dayNumber: weekDate.getDate(),
       isToday
     })
   }
@@ -191,6 +234,8 @@ export default function AdminPage() {
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success')
   const [hasDragged, setHasDragged] = useState(false)
   const [lastSnapTime, setLastSnapTime] = useState<number>(0)
+  const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false)
+  const [calendarViewDate, setCalendarViewDate] = useState<Date>(new Date())
 
   // Constantes pour l'échelle de la grille
   const HOUR_HEIGHT = 250 // Hauteur fixe par heure en pixels (zoom amélioré pour la lisibilité)
@@ -842,6 +887,98 @@ export default function AdminPage() {
     }
   }
 
+  // Fonction pour compter les RDV par date
+  const getAppointmentsCountByDate = (dateStr: string): number => {
+    const normalizedDate = normalizeDate(dateStr)
+    return appointments.filter(apt => {
+      const aptDate = normalizeDate(apt.date)
+      return aptDate === normalizedDate
+    }).length
+  }
+
+  // Fonction pour générer les jours du mois (avec jours précédents/suivants pour compléter la grille)
+  const generateMonthDays = (year: number, month: number) => {
+    const firstDay = new Date(year, month, 1)
+    const lastDay = new Date(year, month + 1, 0)
+    const daysInMonth = lastDay.getDate()
+    const startingDayOfWeek = firstDay.getDay() // 0 = dimanche, 6 = samedi
+    
+    const days: Array<{ date: Date; isCurrentMonth: boolean; dateStr: string }> = []
+    
+    // Jours du mois précédent pour compléter la première semaine
+    const prevMonth = new Date(year, month, 0)
+    const daysInPrevMonth = prevMonth.getDate()
+    for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+      const date = new Date(year, month - 1, daysInPrevMonth - i)
+      days.push({
+        date,
+        isCurrentMonth: false,
+        dateStr: getLocalDateString(date)
+      })
+    }
+    
+    // Jours du mois actuel
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day)
+      days.push({
+        date,
+        isCurrentMonth: true,
+        dateStr: getLocalDateString(date)
+      })
+    }
+    
+    // Jours du mois suivant pour compléter la dernière semaine (jusqu'à 42 jours au total)
+    const remainingDays = 42 - days.length
+    for (let day = 1; day <= remainingDays; day++) {
+      const date = new Date(year, month + 1, day)
+      days.push({
+        date,
+        isCurrentMonth: false,
+        dateStr: getLocalDateString(date)
+      })
+    }
+    
+    return days
+  }
+
+  // Navigation mois précédent/suivant
+  const handlePreviousMonth = () => {
+    setCalendarViewDate(prev => {
+      const newDate = new Date(prev)
+      newDate.setMonth(prev.getMonth() - 1)
+      return newDate
+    })
+  }
+
+  const handleNextMonth = () => {
+    setCalendarViewDate(prev => {
+      const newDate = new Date(prev)
+      newDate.setMonth(prev.getMonth() + 1)
+      return newDate
+    })
+  }
+
+  const handleGoToToday = () => {
+    const today = new Date()
+    setCalendarViewDate(today)
+    setSelectedDate(getLocalDateString(today))
+  }
+
+  // Ouvrir la modale calendrier et initialiser avec la date sélectionnée
+  const handleOpenCalendarModal = () => {
+    const selectedDateObj = new Date(selectedDate + 'T00:00:00')
+    if (!isNaN(selectedDateObj.getTime())) {
+      setCalendarViewDate(selectedDateObj)
+    }
+    setIsCalendarModalOpen(true)
+  }
+
+  // Sélectionner un jour depuis le calendrier
+  const handleSelectDateFromCalendar = (dateStr: string) => {
+    setSelectedDate(dateStr)
+    setIsCalendarModalOpen(false)
+  }
+
   // Fonction pour enregistrer un nouveau rendez-vous
   const handleSaveAppointment = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -985,8 +1122,16 @@ export default function AdminPage() {
     }
   }
 
-  // Générer les 7 prochains jours
-  const next7Days = getNext7Days()
+  // Générer les 7 jours à afficher
+  // Si la date sélectionnée est dans la plage actuelle (7 prochains jours), on garde cette plage
+  // Sinon, on affiche la semaine contenant la date sélectionnée
+  const default7Days = getNext7Days()
+  const selectedDateObj = new Date(selectedDate + 'T00:00:00')
+  const isSelectedDateInRange = default7Days.some(day => day.dateStr === selectedDate)
+  
+  const next7Days = isSelectedDateInRange 
+    ? default7Days 
+    : getWeekContainingDate(selectedDateObj)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 w-full overflow-x-hidden relative">
@@ -1054,18 +1199,12 @@ export default function AdminPage() {
               </div>
 
               <div className="relative">
-                <label htmlFor="date-picker" className="cursor-pointer touch-manipulation">
-                  <div className="w-14 h-14 rounded-xl bg-slate-700 border border-slate-600 active:bg-slate-600 flex items-center justify-center transition-colors shadow-sm">
-                    <CalendarDays className="w-6 h-6 text-slate-300" />
-                  </div>
-                </label>
-                <input
-                  id="date-picker"
-                  type="date"
-                  value={selectedDate}
-                  onChange={handleDatePickerChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                />
+                <button
+                  onClick={handleOpenCalendarModal}
+                  className="w-14 h-14 rounded-xl bg-slate-700 border border-slate-600 active:bg-slate-600 flex items-center justify-center transition-colors shadow-sm touch-manipulation hover:bg-slate-600"
+                >
+                  <CalendarDays className="w-6 h-6 text-slate-300" />
+                </button>
               </div>
             </div>
           </CardContent>
@@ -1101,7 +1240,7 @@ export default function AdminPage() {
                     {generateTimeSlots().map((time, index) => (
                       <div
                         key={time}
-                        className="absolute left-0 right-12 border-t border-slate-700/30"
+                        className="absolute left-12 right-0 border-t border-slate-700/30"
                         style={{ top: `${index * HOUR_HEIGHT}px` }}
                       ></div>
                     ))}
@@ -1113,18 +1252,18 @@ export default function AdminPage() {
                       return (
                         <div
                           key={`quarter-${i}`}
-                          className="absolute left-0 right-12 border-t border-slate-700/10"
+                          className="absolute left-12 right-0 border-t border-slate-700/10"
                           style={{ top: `${topPx}px` }}
                         ></div>
                       )
                     })}
 
-                    {/* Colonne des heures à droite */}
-                    <div className="absolute right-0 top-0 bottom-0 w-12 border-l border-slate-700 z-10 bg-slate-800/50">
+                    {/* Colonne des heures à gauche (RTL) */}
+                    <div className="absolute left-0 top-0 bottom-0 w-12 border-r border-slate-700 z-10 bg-slate-800/50">
                       {generateTimeSlots().map((time, index) => (
                         <div
                           key={time}
-                          className="absolute right-0 w-full flex items-center justify-end pr-1"
+                          className="absolute left-0 w-full flex items-center justify-start ps-1"
                           style={{ top: `${index * HOUR_HEIGHT}px` }}
                         >
                           <span className="text-[10px] text-slate-400 font-medium">{time}</span>
@@ -1134,7 +1273,7 @@ export default function AdminPage() {
 
                     {/* Zone des rendez-vous */}
                     <div 
-                      className="pr-12 relative w-full" 
+                      className="ps-12 relative w-full" 
                       style={{ height: `${GRID_TOTAL_HEIGHT}px` }}
                     >
                       {/* Cellules cliquables pour chaque créneau de 5 minutes */}
@@ -1151,7 +1290,7 @@ export default function AdminPage() {
                           cells.push(
                             <div
                               key={`cell-${i}`}
-                              className={`absolute left-0 right-12 cursor-pointer transition-all hover:bg-blue-500/10 active:bg-blue-500/20 border-b border-slate-700/10 touch-manipulation group`}
+                              className={`absolute left-12 right-0 cursor-pointer transition-all hover:bg-blue-500/10 active:bg-blue-500/20 border-b border-slate-700/10 touch-manipulation group`}
                               style={{
                                 top: `${topPx}px`,
                                 height: `${heightPx}px`,
@@ -1183,11 +1322,11 @@ export default function AdminPage() {
                       {/* Ligne "Maintenant" */}
                       {getCurrentTimePositionPx() !== null && (
                         <div
-                          className="absolute left-0 right-12 border-t-2 border-white z-20 flex items-center gap-2"
+                          className="absolute left-12 right-0 border-t-2 border-white z-20 flex items-center gap-2"
                           style={{ top: `${getCurrentTimePositionPx()}px` }}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="w-3 h-3 rounded-full bg-white ml-2"></div>
+                          <div className="w-3 h-3 rounded-full bg-white ms-2"></div>
                           <span className="text-[10px] text-white font-medium bg-slate-800 px-2 py-1 rounded">
                             עכשיו {currentTime.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
                           </span>
@@ -1197,7 +1336,7 @@ export default function AdminPage() {
                       {/* Fantôme à la position d'origine pendant le drag */}
                       {draggedAppointment && dragOriginalTop !== null && (
                         <div
-                          className="absolute left-0 right-12 opacity-30 pointer-events-none z-20 flex items-center rounded-lg overflow-hidden"
+                          className="absolute left-12 right-0 opacity-30 pointer-events-none z-20 flex items-center rounded-lg overflow-hidden"
                           style={{
                             top: `${dragOriginalTop}px`,
                             height: `${calculateAppointmentHeightPx(draggedAppointment.service_duration || 30)}px`,
@@ -1247,7 +1386,7 @@ export default function AdminPage() {
                                   handleAppointmentClick(e, apt)
                                 }
                               }}
-                              className={`absolute left-0 right-12 active:opacity-80 cursor-move touch-manipulation ${
+                              className={`absolute left-12 right-0 active:opacity-80 cursor-move touch-manipulation ${
                                 isPause 
                                   ? 'bg-amber-100 text-amber-900' 
                                   : 'bg-sky-50 active:bg-sky-100 text-gray-900'
@@ -1446,7 +1585,7 @@ export default function AdminPage() {
                 </div>
                 <button
                   onClick={closeAppointmentModal}
-                  className="text-slate-400 hover:text-white transition-colors ml-4"
+                  className="text-slate-400 hover:text-white transition-colors ms-4"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -1495,7 +1634,8 @@ export default function AdminPage() {
                           <select
                             value={editingDuration}
                             onChange={(e) => setEditingDuration(parseInt(e.target.value))}
-                            className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            dir="rtl"
                             disabled={isUpdatingDuration}
                           >
                             {AVAILABLE_DURATIONS.map((duration) => (
@@ -1683,7 +1823,8 @@ export default function AdminPage() {
                           id="hour"
                           value={newAppointment.hour}
                           onChange={(e) => setNewAppointment(prev => ({ ...prev, hour: e.target.value }))}
-                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-md text-white text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation"
+                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-md text-white text-lg text-right focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation"
+                          dir="rtl"
                           required
                         >
                           {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => {
@@ -1706,7 +1847,8 @@ export default function AdminPage() {
                           id="minute"
                           value={newAppointment.minute}
                           onChange={(e) => setNewAppointment(prev => ({ ...prev, minute: e.target.value }))}
-                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-md text-white text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation"
+                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-md text-white text-lg text-right focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation"
+                          dir="rtl"
                           required
                         >
                           {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((min) => (
@@ -1749,7 +1891,8 @@ export default function AdminPage() {
                             duration: defaultDuration
                           }))
                         }}
-                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        dir="rtl"
                         required
                       >
                         <option value="">בחר שירות</option>
@@ -1768,7 +1911,8 @@ export default function AdminPage() {
                       id="duration"
                       value={newAppointment.duration}
                       onChange={(e) => setNewAppointment(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      dir="rtl"
                       required
                     >
                       {AVAILABLE_DURATIONS.map((duration) => (
@@ -1834,6 +1978,120 @@ export default function AdminPage() {
                 >
                   {isSaving ? 'שומר...' : 'שמירה'}
                 </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Modal Calendrier Mensuel */}
+        {isCalendarModalOpen && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4" dir="rtl" onClick={() => setIsCalendarModalOpen(false)}>
+            <Card 
+              className="w-full max-w-2xl max-h-[90vh] bg-slate-800 border-slate-700 shadow-2xl flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <CardHeader className="flex items-center justify-between border-b border-slate-700 pb-4 flex-shrink-0">
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={handlePreviousMonth}
+                    className="p-2 rounded-lg hover:bg-slate-700 transition-colors"
+                  >
+                    <ChevronRight className="w-5 h-5 text-slate-300" />
+                  </button>
+                  <div className="text-center">
+                    <CardTitle className="text-xl text-white">
+                      {MONTHS_HEBREW[calendarViewDate.getMonth()]} {calendarViewDate.getFullYear()}
+                    </CardTitle>
+                  </div>
+                  <button
+                    onClick={handleNextMonth}
+                    className="p-2 rounded-lg hover:bg-slate-700 transition-colors"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-slate-300" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleGoToToday}
+                    className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                  >
+                    היום
+                  </button>
+                  <button
+                    onClick={() => setIsCalendarModalOpen(false)}
+                    className="text-slate-400 hover:text-white transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 overflow-y-auto flex-1 min-h-0">
+                {/* En-têtes des jours de la semaine */}
+                <div className="grid grid-cols-7 gap-2 mb-2">
+                  {DAYS_HEBREW.map((dayName: string, index: number) => (
+                    <div key={index} className="text-center text-sm font-semibold text-slate-400 py-2">
+                      {dayName}
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Grille des jours */}
+                <div className="grid grid-cols-7 gap-2">
+                  {generateMonthDays(calendarViewDate.getFullYear(), calendarViewDate.getMonth()).map((day, index) => {
+                    const appointmentsCount = getAppointmentsCountByDate(day.dateStr)
+                    const isSelected = day.dateStr === selectedDate
+                    const isToday = day.dateStr === getLocalDateString(new Date())
+                    const isCurrentMonth = day.isCurrentMonth
+                    
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          if (isCurrentMonth) {
+                            handleSelectDateFromCalendar(day.dateStr)
+                          }
+                        }}
+                        className={`
+                          relative aspect-square p-2 rounded-lg transition-all touch-manipulation
+                          ${!isCurrentMonth ? 'text-slate-600' : ''}
+                          ${isSelected && isCurrentMonth 
+                            ? 'bg-blue-600 text-white ring-2 ring-blue-400' 
+                            : isCurrentMonth
+                            ? 'bg-slate-700 hover:bg-slate-600 text-slate-200'
+                            : 'bg-slate-800 text-slate-600'
+                          }
+                          ${isToday && isCurrentMonth && !isSelected ? 'ring-2 ring-blue-500' : ''}
+                        `}
+                        disabled={!isCurrentMonth}
+                      >
+                        <div className="flex flex-col items-center justify-center h-full">
+                          <span className={`text-sm font-medium ${isSelected ? 'text-white' : ''}`}>
+                            {day.date.getDate()}
+                          </span>
+                          {appointmentsCount > 0 && (
+                            <span className={`
+                              text-xs font-bold mt-1 px-1.5 py-0.5 rounded-full
+                              ${isSelected 
+                                ? 'bg-white text-blue-600' 
+                                : 'bg-blue-600 text-white'
+                              }
+                            `}>
+                              {appointmentsCount}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </CardContent>
+              <div className="border-t border-slate-700 p-4 flex justify-center flex-shrink-0">
+                <button
+                  onClick={() => setIsCalendarModalOpen(false)}
+                  className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium"
+                >
+                  סגור
+                </button>
               </div>
             </Card>
           </div>

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -37,6 +39,7 @@
     margin: 0;
     padding: 0;
     overflow-x: hidden;
+    font-family: 'Heebo', system-ui, -apple-system, sans-serif;
   }
   body {
     position: relative;
@@ -57,5 +60,49 @@
   .touch-manipulation {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Amélioration typographie hébraïque */
+  body {
+    font-feature-settings: "kern" 1, "liga" 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: 0.01em;
+  }
+  
+  /* Amélioration espacement pour RTL */
+  [dir="rtl"] {
+    text-align: right;
+  }
+  
+  /* Inputs RTL par défaut */
+  [dir="rtl"] input,
+  [dir="rtl"] textarea,
+  [dir="rtl"] select {
+    text-align: right;
+    direction: rtl;
+  }
+  
+  /* Amélioration lisibilité texte hébreu */
+  [dir="rtl"] p,
+  [dir="rtl"] span,
+  [dir="rtl"] div {
+    line-height: 1.6;
+  }
+  
+  /* Espacement amélioré pour les boutons RTL */
+  [dir="rtl"] button,
+  [dir="rtl"] a {
+    letter-spacing: 0.02em;
+  }
+  
+  /* Scroll horizontal RTL - commence depuis la droite */
+  [dir="rtl"] .overflow-x-auto {
+    direction: rtl;
+  }
+  
+  [dir="rtl"] .overflow-x-auto > * {
+    direction: ltr;
   }
 }

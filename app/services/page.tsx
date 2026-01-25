@@ -102,7 +102,7 @@ export default function ServicesPage() {
                 className="flex-1"
               >
                 <Button variant="outline" size="sm" className="w-full text-sm">
-                  <Phone className="w-4 h-4 ml-2" />
+                  <Phone className="w-4 h-4 ms-2" />
                   התקשר
                 </Button>
               </a>
@@ -116,7 +116,7 @@ export default function ServicesPage() {
                   size="sm"
                   className="w-full bg-[#25D366] hover:bg-[#20BA5A] text-sm"
                 >
-                  <MessageCircle className="w-4 h-4 ml-2" />
+                  <MessageCircle className="w-4 h-4 ms-2" />
                   WhatsApp
                 </Button>
               </a>
@@ -178,7 +178,7 @@ export default function ServicesPage() {
                             <span>{service.duration}</span>
                             <span className="font-semibold">
                               {service.pricePrefix && (
-                                <span className="text-xs mr-1">{service.pricePrefix}</span>
+                                <span className="text-xs me-1">{service.pricePrefix}</span>
                               )}
                               ₪{service.price}
                             </span>
@@ -255,7 +255,7 @@ export default function ServicesPage() {
         <div className="mt-8 mb-8">
           <Link href="/">
             <Button variant="ghost" className="w-full text-sm sm:text-base">
-              <ArrowRight className="w-4 h-4 ml-2" />
+              <ArrowRight className="w-4 h-4 ms-2" />
               חזרה לעמוד הבית
             </Button>
           </Link>
