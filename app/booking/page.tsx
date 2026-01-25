@@ -42,145 +42,6 @@ type ActiveBooking = {
   clientPhone: string
 }
 
-// Données exactes demandées
-const SERVICE_CATEGORIES: ServiceCategory[] = [
-  {
-    id: "laser",
-    name: "לייזר",
-    services: [
-      {
-        id: "laser-full",
-        name: "הסרת שיער בלייזר מלא",
-        price: 30,
-        durationMinutes: 15,
-        durationLabel: "15 דק'",
-        description: "החל מ - 2 אזורים ומעלה",
-        hasMinPrice: true,
-      },
-      {
-        id: "laser-area1",
-        name: "הסרת שיער בלייזר אזור 1",
-        price: 30,
-        durationMinutes: 10,
-        durationLabel: "10 דק'",
-        description: "החל מ - איזור אחד בלבד",
-        hasMinPrice: true,
-      },
-    ],
-  },
-  {
-    id: "haircuts",
-    name: "תספורות",
-    services: [
-      {
-        id: "haircut-men-child",
-        name: "תספורת גבר/ילד",
-        price: 50,
-        durationMinutes: 20,
-        durationLabel: "20 דק'",
-        description: "זקן בתוספת 10/20 ₪",
-      },
-      {
-        id: "haircut-kid-no-fade",
-        name: "תספורת ילד ללא דירוג",
-        price: 45,
-        durationMinutes: 15,
-        durationLabel: "15 דק'",
-        description: "עד גיל 13",
-      },
-      {
-        id: "haircut-fade-half",
-        name: "תספורת מדורג מספר חצי",
-        price: 60,
-        durationMinutes: 20,
-        durationLabel: "20 דק'",
-        description: "זקן תוספת 10/20",
-      },
-      {
-        id: "haircut-beard",
-        name: "תספורת גבר + זקן",
-        price: 60,
-        durationMinutes: 25,
-        durationLabel: "25 דק'",
-        description: "החל מ - תוספת 10₪ למספר חצי ומטה",
-        hasMinPrice: true,
-      },
-      {
-        id: "haircut-avrech",
-        name: "תספורת אברך",
-        price: 45,
-        durationMinutes: 15,
-        durationLabel: "15 דק'",
-      },
-      {
-        id: "haircut-avrech-beard",
-        name: "תספורת אברך + זקן",
-        price: 55,
-        durationMinutes: 20,
-        durationLabel: "20 דק'",
-        description: "החל מ - 60₪ עם זקן מדורג",
-        hasMinPrice: true,
-      },
-      {
-        id: "haircut-two",
-        name: "2 תספורות",
-        price: 100,
-        durationMinutes: 40,
-        durationLabel: "40 דק'",
-        description: "החל מ",
-        hasMinPrice: true,
-      },
-      {
-        id: "haircut-three",
-        name: "3 תספורות",
-        price: 150,
-        durationMinutes: 50,
-        durationLabel: "50 דק'",
-        description: "החל מ",
-        hasMinPrice: true,
-      },
-      {
-        id: "haircut-two-kids",
-        name: "תספורת 2 ילדים ללא דירוג",
-        price: 90,
-        durationMinutes: 25,
-        durationLabel: "25 דק'",
-      },
-      {
-        id: "haircut-three-kids",
-        name: "תספורת 3 ילדים ללא דירוג",
-        price: 135,
-        durationMinutes: 35,
-        durationLabel: "35 דק'",
-      },
-      {
-        id: "beard-line",
-        name: "סידור זקן או פס",
-        price: 20,
-        durationMinutes: 5,
-        durationLabel: "5 דק'",
-        description: "החל מ",
-        hasMinPrice: true,
-      },
-    ],
-  },
-  {
-    id: "extras",
-    name: "אקסטרה",
-    services: [
-      {
-        id: "wax",
-        name: "שעווה",
-        price: 20,
-        durationMinutes: 10,
-        durationLabel: "10 דק'",
-        description: "החל מ",
-        hasMinPrice: true,
-      },
-    ],
-  },
-]
-
 const phoneNumber = "058-778-0023"
 const whatsappLink = "https://wa.me/message/CBWXKL2ADPWPG1"
 
@@ -278,22 +139,76 @@ export default function BookingPage() {
   const [appointments, setAppointments] = useState<Array<{ date: string; time: string; service_duration: number }>>([])
   const [activeBooking, setActiveBooking] = useState<ActiveBooking | null>(null)
   const [operatingHours, setOperatingHours] = useState<Array<{ day_of_week: number; is_closed: boolean; start_time: string | null; end_time: string | null }>>([])
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([])
+  const [servicesLoading, setServicesLoading] = useState(true)
+
+  useEffect(() => {
+    const load = async () => {
+      setServicesLoading(true)
+      try {
+        const [catRes, srvRes] = await Promise.all([
+          supabase.from("categories").select("id, name, sort_order").order("sort_order", { ascending: true }),
+          supabase
+            .from("services")
+            .select("id, category_id, name, notes, price, price_is_min, duration_minutes, hidden_from_booking")
+            .eq("hidden_from_booking", false)
+            .order("category_id")
+            .order("sort_order", { ascending: true }),
+        ])
+        if (catRes.error || srvRes.error) {
+          console.error("fetch services", catRes.error || srvRes.error)
+          return
+        }
+        const cats = (catRes.data ?? []) as { id: number; name: string; sort_order: number }[]
+        const srvs = (srvRes.data ?? []) as {
+          id: number
+          category_id: number
+          name: string
+          notes: string
+          price: number
+          price_is_min: boolean
+          duration_minutes: number
+        }[]
+        const built: ServiceCategory[] = cats.map((c) => ({
+          id: String(c.id),
+          name: c.name,
+          services: srvs
+            .filter((s) => s.category_id === c.id)
+            .map((s) => ({
+              id: String(s.id),
+              name: s.name,
+              price: s.price,
+              durationMinutes: s.duration_minutes,
+              durationLabel: `${s.duration_minutes} דק'`,
+              description: s.notes || undefined,
+              hasMinPrice: s.price_is_min,
+            })),
+        }))
+        setServiceCategories(built)
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setServicesLoading(false)
+      }
+    }
+    load()
+  }, [])
 
   const serviceMap = useMemo(() => {
     const map: Record<string, Service> = {}
-    SERVICE_CATEGORIES.forEach((cat) => {
+    serviceCategories.forEach((cat) => {
       cat.services.forEach((s) => {
         map[s.id] = s
       })
     })
     return map
-  }, [])
+  }, [serviceCategories])
 
   const displayedServices = useMemo(() => {
-    if (!selectedCategory) return SERVICE_CATEGORIES.flatMap((cat) => cat.services)
-    const category = SERVICE_CATEGORIES.find((cat) => cat.id === selectedCategory)
+    if (!selectedCategory) return serviceCategories.flatMap((cat) => cat.services)
+    const category = serviceCategories.find((cat) => cat.id === selectedCategory)
     return category ? category.services : []
-  }, [selectedCategory])
+  }, [selectedCategory, serviceCategories])
 
   const totalPrice = selectedServices.reduce((sum, id) => sum + (serviceMap[id]?.price ?? 0), 0)
 
@@ -418,18 +333,19 @@ export default function BookingPage() {
       clientPhone: cleanedPhone,
     })
     
-    // Sauvegarder le RDV dans localStorage
+    // Sauvegarder le RDV dans localStorage (services = noms pour confirmation / service_name)
     if (selectedDate && selectedTime && typeof window !== 'undefined') {
       const totalDuration = selectedServices.reduce((sum, serviceId) => {
         const service = serviceMap[serviceId]
         return sum + (service?.durationMinutes || 0)
       }, 0)
       const totalPrice = selectedServices.reduce((sum, id) => sum + (serviceMap[id]?.price ?? 0), 0)
+      const serviceNames = selectedServices.map((id) => serviceMap[id]?.name).filter(Boolean) as string[]
 
       const booking: UserBooking = {
         date: selectedDate,
         time: selectedTime,
-        services: selectedServices,
+        services: serviceNames,
         clientName: clientName.trim(),
         clientPhone: cleanedPhone,
         durationMinutes: totalDuration,
@@ -1039,7 +955,7 @@ export default function BookingPage() {
             >
               הכל
             </button>
-            {SERVICE_CATEGORIES.map((category) => (
+            {serviceCategories.map((category) => (
               <button
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
@@ -1059,6 +975,9 @@ export default function BookingPage() {
 
       {/* Liste services */}
       <main className="max-w-2xl mx-auto px-4 py-6 bg-gray-100">
+        {servicesLoading ? (
+          <div className="text-center py-12 text-gray-500">טוען שירותים...</div>
+        ) : (
         <div className="space-y-3 mb-24">
           {displayedServices.map((service) => {
             const isSelected = selectedServices.includes(service.id)
@@ -1099,6 +1018,7 @@ export default function BookingPage() {
             )
           })}
         </div>
+        )}
       </main>
 
       {/* Footer */}
@@ -1115,7 +1035,7 @@ export default function BookingPage() {
           </div>
           <Button
             onClick={handleContinueFromServices}
-            disabled={selectedServices.length === 0}
+            disabled={servicesLoading || selectedServices.length === 0}
             className={cn(
               "w-full h-12 text-lg font-semibold transition",
               selectedServices.length > 0

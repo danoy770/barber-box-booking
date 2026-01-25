@@ -22,72 +22,6 @@ type Appointment = {
   isPaid?: boolean // Statut du paiement (undefined = payé par défaut)
 }
 
-// Liste des services disponibles
-const SERVICES = [
-  "תספורת גבר/ילד",
-  "תספורת ילד ללא דירוג (עד גיל 13)",
-  "תספורת מדורג מספר חצי ומטה",
-  "תספורת גבר + זקן",
-  "תספורת אברך",
-  "תספורת אברך + זקן",
-  "2 תספורות",
-  "3 תספורות",
-  "תספורת 2 ילדים ללא דירוג",
-  "תספורת 3 ילדים ללא דירוג",
-  "סידור זקן או פס",
-  "הסרת שיער בלייזר מלא",
-  "הסרת שיער בלייזר אזור 1",
-  "תספורת ראשונה לילד (חלאקה)",
-  "תספורת עד הבית",
-  "שעווה",
-  "תספורת פרימיום",
-  "טיפול פנים + תספורת"
-]
-
-// Durées par défaut pour chaque service (en minutes)
-const SERVICE_DURATIONS: Record<string, number> = {
-  "תספורת גבר/ילד": 30,
-  "תספורת ילד ללא דירוג (עד גיל 13)": 20,
-  "תספורת מדורג מספר חצי ומטה": 30,
-  "תספורת גבר + זקן": 45,
-  "תספורת אברך": 30,
-  "תספורת אברך + זקן": 45,
-  "2 תספורות": 60,
-  "3 תספורות": 90,
-  "תספורת 2 ילדים ללא דירוג": 40,
-  "תספורת 3 ילדים ללא דירוג": 60,
-  "סידור זקן או פס": 15,
-  "הסרת שיער בלייזר מלא": 60,
-  "הסרת שיער בלייזר אזור 1": 30,
-  "תספורת ראשונה לילד (חלאקה)": 30,
-  "תספורת עד הבית": 30,
-  "שעווה": 30,
-  "תספורת פרימיום": 45,
-  "טיפול פנים + תספורת": 60
-}
-
-// Prix par défaut pour chaque service (en shekels)
-const SERVICE_PRICES: Record<string, number> = {
-  "תספורת גבר/ילד": 50,
-  "תספורת ילד ללא דירוג (עד גיל 13)": 45,
-  "תספורת מדורג מספר חצי ומטה": 60,
-  "תספורת גבר + זקן": 60,
-  "תספורת אברך": 45,
-  "תספורת אברך + זקן": 55,
-  "2 תספורות": 100,
-  "3 תספורות": 150,
-  "תספורת 2 ילדים ללא דירוג": 90,
-  "תספורת 3 ילדים ללא דירוג": 135,
-  "סידור זקן או פס": 20,
-  "הסרת שיער בלייזר מלא": 30,
-  "הסרת שיער בלייזר אזור 1": 30,
-  "תספורת ראשונה לילד (חלאקה)": 0, // Prix par défaut si non défini
-  "תספורת עד הבית": 0,
-  "שעווה": 20,
-  "תספורת פרימיום": 0,
-  "טיפול פנים + תספורת": 0
-}
-
 // Fonction pour formater une durée en minutes en texte hébreu lisible
 function formatDurationHebrew(minutes: number): string {
   if (minutes < 60) {
@@ -273,6 +207,27 @@ export default function AdminPage() {
   const [lastSnapTime, setLastSnapTime] = useState<number>(0)
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false)
   const [calendarViewDate, setCalendarViewDate] = useState<Date>(new Date())
+  const [adminServices, setAdminServices] = useState<Array<{ id: number; name: string; price: number; duration_minutes: number }>>([])
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('services')
+          .select('id, name, price, duration_minutes')
+          .order('category_id')
+          .order('sort_order', { ascending: true })
+        if (error) {
+          console.error('Erreur chargement services:', error)
+          return
+        }
+        setAdminServices((data as Array<{ id: number; name: string; price: number; duration_minutes: number }>) ?? [])
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    load()
+  }, [])
 
   // Constantes pour l'échelle de la grille
   const HOUR_HEIGHT = 250 // Hauteur fixe par heure en pixels (zoom amélioré pour la lisibilité)
@@ -2041,14 +1996,13 @@ export default function AdminPage() {
                         id="service"
                         value={newAppointment.service}
                         onChange={(e) => {
-                          const selectedService = e.target.value
-                          const defaultDuration = SERVICE_DURATIONS[selectedService] || 30
-                          const defaultPrice = SERVICE_PRICES[selectedService] || 0
-                          setNewAppointment(prev => ({ 
-                            ...prev, 
-                            service: selectedService,
-                            duration: defaultDuration,
-                            price: defaultPrice
+                          const name = e.target.value
+                          const svc = adminServices.find(s => s.name === name)
+                          setNewAppointment(prev => ({
+                            ...prev,
+                            service: name,
+                            duration: svc?.duration_minutes ?? 30,
+                            price: svc?.price ?? 0
                           }))
                         }}
                         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -2056,9 +2010,9 @@ export default function AdminPage() {
                         required
                       >
                         <option value="">בחר שירות</option>
-                        {SERVICES.map((service) => (
-                          <option key={service} value={service} className="bg-slate-700">
-                            {service}
+                        {adminServices.map((s) => (
+                          <option key={s.id} value={s.name} className="bg-slate-700">
+                            {s.name}
                           </option>
                         ))}
                       </select>
