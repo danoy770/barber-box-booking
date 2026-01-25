@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Calendar, Clock, Trash2, Phone, CalendarDays, Plus, X, User, ChevronLeft, ChevronRight } from "lucide-react"
+import { Calendar, Clock, Trash2, Phone, CalendarDays, Plus, X, User, ChevronLeft, ChevronRight, Menu } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { useSidebar } from "./contexts/SidebarContext"
 
 // Type pour les rendez-vous
 type Appointment = {
@@ -192,6 +193,8 @@ function getWeekContainingDate(targetDate: Date): Array<{ date: Date; dateStr: s
 }
 
 export default function AdminPage() {
+  const { toggle } = useSidebar()
+  
   const getTodayLocal = () => {
     const today = new Date()
     return getLocalDateString(today)
@@ -1134,7 +1137,7 @@ export default function AdminPage() {
     : getWeekContainingDate(selectedDateObj)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 w-full overflow-x-hidden relative">
+    <>
       {/* Toast de notification */}
       {toastMessage && (
         <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-[100] text-white px-6 py-3 rounded-lg shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 ${
@@ -1163,9 +1166,18 @@ export default function AdminPage() {
       <div className="w-full py-2 space-y-2">
         {/* Header */}
         <div className="flex items-center justify-between px-3">
-          <div>
-            <h1 className="text-2xl font-bold text-white">ניהול תורים</h1>
-            <p className="text-xs text-slate-400 mt-1">ברבר בוקס</p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggle}
+              className="lg:hidden p-2 rounded-lg bg-slate-800 border border-slate-700 text-white hover:bg-slate-700 transition-colors"
+              aria-label="Toggle menu"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-white">ניהול תורים</h1>
+              <p className="text-xs text-slate-400 mt-1">ברבר בוקס</p>
+            </div>
           </div>
         </div>
 
@@ -2097,6 +2109,6 @@ export default function AdminPage() {
           </div>
         )}
       </div>
-    </div>
+    </>
   )
 }
