@@ -157,9 +157,9 @@ export default function AdminPage() {
   
   // Données de test
   const [appointments, setAppointments] = useState<Appointment[]>([
-    { id: 1, client_name: 'David', client_phone: '050-123-4567', service_name: 'Coupe Homme', date: todayDate, time: '10:00', service_duration: 5 },
-    { id: 2, client_name: 'Yossi', client_phone: '050-234-5678', service_name: 'Barbe', date: todayDate, time: '10:15', service_duration: 15 },
-    { id: 3, client_name: 'Ariel', client_phone: '050-345-6789', service_name: 'Coupe + Barbe', date: todayDate, time: '10:30', service_duration: 30 }
+    { id: 1, client_name: 'David', client_phone: '050-123-4567', service_name: 'תספורת גבר', date: todayDate, time: '10:00', service_duration: 5 },
+    { id: 2, client_name: 'Yossi', client_phone: '050-234-5678', service_name: 'זקן', date: todayDate, time: '10:15', service_duration: 15 },
+    { id: 3, client_name: 'Ariel', client_phone: '050-345-6789', service_name: 'תספורת + זקן', date: todayDate, time: '10:30', service_duration: 30 }
   ])
   const [isLoading, setIsLoading] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string>(todayDate)
@@ -638,10 +638,10 @@ export default function AdminPage() {
 
         if (wasAdjusted) {
           setToastType('info')
-          setToastMessage('Durée ajustée pour éviter un chevauchement')
+          setToastMessage('המשך הותאם כדי למנוע חפיפה')
         } else {
           setToastType('success')
-          setToastMessage(`Rendez-vous déplacé à ${newTimeString}`)
+          setToastMessage(`התור הועבר ל־${newTimeString}`)
         }
         setTimeout(() => {
           setToastMessage(null)
@@ -733,10 +733,10 @@ export default function AdminPage() {
 
             if (wasAdjusted) {
               setToastType('info')
-              setToastMessage('Durée ajustée pour éviter un chevauchement')
+              setToastMessage('המשך הותאם כדי למנוע חפיפה')
             } else {
               setToastType('success')
-              setToastMessage(`Rendez-vous déplacé à ${newTimeString}`)
+              setToastMessage(`התור הועבר ל־${newTimeString}`)
             }
             setTimeout(() => {
               setToastMessage(null)
@@ -790,7 +790,7 @@ export default function AdminPage() {
 
   // Fonction pour générer le message WhatsApp pré-rempli
   const getWhatsAppMessage = (clientName: string): string => {
-    return encodeURIComponent(`Bonjour ${clientName}, c'est Barber Box...`)
+    return encodeURIComponent(`שלום ${clientName}, זה ברבר בוקס...`)
   }
 
   // Fonction de suppression
@@ -968,7 +968,7 @@ export default function AdminPage() {
         
         if (wasAdjusted) {
           setToastType('info')
-          setToastMessage('Durée ajustée pour éviter un chevauchement')
+          setToastMessage('המשך הותאם כדי למנוע חפיפה')
         } else {
           setToastType('success')
           setToastMessage('התור נשמר בהצלחה')
@@ -1020,7 +1020,7 @@ export default function AdminPage() {
         <div className="flex items-center justify-between px-3">
           <div>
             <h1 className="text-2xl font-bold text-white">ניהול תורים</h1>
-            <p className="text-xs text-slate-400 mt-1">Barber Box</p>
+            <p className="text-xs text-slate-400 mt-1">ברבר בוקס</p>
           </div>
         </div>
 
@@ -1546,7 +1546,7 @@ export default function AdminPage() {
                                   
                                   if (wasAdjusted) {
                                     setToastType('info')
-                                    setToastMessage('Durée ajustée pour éviter un chevauchement')
+                                    setToastMessage('המשך הותאם כדי למנוע חפיפה')
                                   } else {
                                     setToastType('success')
                                     setToastMessage('המשך עודכן בהצלחה')
@@ -1630,7 +1630,7 @@ export default function AdminPage() {
                     className="flex items-center justify-center gap-3 w-full px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white transition-colors font-semibold touch-manipulation"
                   >
                     <Phone className="w-5 h-5" />
-                    <span>Appeler</span>
+                    <span>התקשר</span>
                   </a>
 
                   <button
@@ -1640,7 +1640,7 @@ export default function AdminPage() {
                     className="flex items-center justify-center gap-3 w-full px-4 py-3 rounded-lg bg-red-600 hover:bg-red-700 active:bg-red-800 text-white transition-colors font-semibold touch-manipulation"
                   >
                     <Trash2 className="w-5 h-5" />
-                    <span>Supprimer le rendez-vous</span>
+                    <span>מחק</span>
                   </button>
                 </div>
               </CardContent>
@@ -1651,8 +1651,8 @@ export default function AdminPage() {
         {/* Modal pour créer un nouveau RDV */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" dir="rtl">
-            <Card className="w-full max-w-md bg-slate-800 border-slate-700 shadow-2xl">
-              <CardHeader className="flex items-center justify-between border-b border-slate-700">
+            <Card className="w-full max-w-md max-h-[90vh] bg-slate-800 border-slate-700 shadow-2xl flex flex-col">
+              <CardHeader className="flex items-center justify-between border-b border-slate-700 flex-shrink-0">
                 <CardTitle className="text-2xl text-white">תור חדש</CardTitle>
                 <button
                   onClick={() => setIsModalOpen(false)}
@@ -1661,8 +1661,8 @@ export default function AdminPage() {
                   <X className="w-6 h-6" />
                 </button>
               </CardHeader>
-              <CardContent className="pt-6">
-                <form onSubmit={handleSaveAppointment} className="space-y-4">
+              <CardContent className="pt-6 overflow-y-auto flex-1 min-h-0">
+                <form onSubmit={handleSaveAppointment} className="space-y-4" id="appointment-form">
                   <div className="space-y-2">
                     <Label htmlFor="date" className="text-slate-300">תאריך</Label>
                     <Input
@@ -1809,25 +1809,32 @@ export default function AdminPage() {
                     </>
                   )}
 
-                  <div className="flex gap-3 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsModalOpen(false)}
-                      className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
-                    >
-                      ביטול
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={isSaving}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                      {isSaving ? 'שומר...' : 'שמירה'}
-                    </Button>
-                  </div>
                 </form>
               </CardContent>
+              <div className="border-t border-slate-700 p-4 flex gap-3 flex-shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
+                >
+                  ביטול
+                </Button>
+                <Button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    const form = document.getElementById('appointment-form') as HTMLFormElement
+                    if (form) {
+                      form.requestSubmit()
+                    }
+                  }}
+                  disabled={isSaving}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {isSaving ? 'שומר...' : 'שמירה'}
+                </Button>
+              </div>
             </Card>
           </div>
         )}

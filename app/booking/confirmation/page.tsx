@@ -196,7 +196,7 @@ function ConfirmationContent() {
       // Calculer le nom du service (premier service sélectionné ou tous)
       const serviceName = localStorageBooking.services.length > 0 
         ? localStorageBooking.services.join(', ') 
-        : 'Service non spécifié'
+        : 'שירות לא צוין'
       
       console.log('[handleConfirmBooking] Nom du service calculé:', serviceName)
       
@@ -228,8 +228,8 @@ function ConfirmationContent() {
         console.error('[handleConfirmBooking] Détails:', error.details)
         console.error('[handleConfirmBooking] Hint:', error.hint)
         
-        const errorMessage = error.message || error.details || 'Problème inconnu'
-        alert(`Erreur : ${errorMessage}\n\nCode: ${error.code || 'N/A'}`)
+        const errorMessage = error.message || error.details || 'בעיה לא ידועה'
+        alert(`שגיאה: ${errorMessage}\n\nקוד: ${error.code || 'לא זמין'}`)
       } else {
         console.log('[handleConfirmBooking] Succès! Données insérées:', data)
         console.log('[handleConfirmBooking] ID du RDV:', data?.id)
@@ -270,8 +270,8 @@ function ConfirmationContent() {
       console.error('[handleConfirmBooking] Type d\'erreur:', typeof error)
       console.error('[handleConfirmBooking] Stack:', error?.stack)
       
-      const errorMessage = error?.message || error?.toString() || 'Problème inconnu'
-      alert(`Erreur : ${errorMessage}`)
+      const errorMessage = error?.message || error?.toString() || 'בעיה לא ידועה'
+      alert(`שגיאה: ${errorMessage}`)
     } finally {
       console.log('[handleConfirmBooking] Bloc finally - Remise de isSubmitting à false')
       setIsSubmitting(false)
@@ -316,7 +316,7 @@ function ConfirmationContent() {
         console.log('[handleCancelBooking] RDV annulé avec succès')
         
         // Alerte de succès immédiate
-        alert('RDV annulé avec succès')
+        alert('התור בוטל בהצלחה')
         
         // Supprimer aussi du localStorage
         if (typeof window !== 'undefined') {
@@ -335,7 +335,7 @@ function ConfirmationContent() {
       }
     } catch (error: any) {
       console.error('[handleCancelBooking] Exception:', error)
-      alert(`אירעה שגיאה: ${error?.message || 'Problème inconnu'}`)
+      alert(`אירעה שגיאה: ${error?.message || 'בעיה לא ידועה'}`)
     }
   }
 
@@ -368,15 +368,15 @@ function ConfirmationContent() {
     const endStr = formatDateForICS(endDate)
 
     // Construire le contenu du fichier .ics
-    const serviceName = bookingDetails.service || 'Coiffure'
+    const serviceName = bookingDetails.service || 'תספורת'
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Barber Box//Booking System//EN',
+      'PRODID:-//Barber Box//Booking System//HE',
       'BEGIN:VEVENT',
-      `SUMMARY:Barber Box - ${serviceName}`,
-      `DESCRIPTION:Rendez-vous coiffeur avec Dan Cohen.\\nService: ${serviceName}\\nNom: ${localStorageBooking.clientName}`,
-      'LOCATION:Barber Box, Beit Shemesh',
+      `SUMMARY:ברבר בוקס - ${serviceName}`,
+      `DESCRIPTION:תור אצל דן כהן.\\nשירות: ${serviceName}\\nשם: ${localStorageBooking.clientName}`,
+      'LOCATION:ברבר בוקס, בית שמש',
       `DTSTART:${startStr}`,
       `DTEND:${endStr}`,
       'END:VEVENT',
@@ -388,7 +388,7 @@ function ConfirmationContent() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.setAttribute('download', 'rendez-vous.ics')
+    link.setAttribute('download', 'תור.ics')
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

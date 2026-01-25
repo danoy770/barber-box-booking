@@ -596,7 +596,7 @@ export default function BookingPage() {
       }
     } catch (error: any) {
       console.error('Erreur lors de l\'annulation:', error)
-      alert(`אירעה שגיאה: ${error?.message || 'Problème inconnu'}`)
+      alert(`אירעה שגיאה: ${error?.message || 'בעיה לא ידועה'}`)
     }
   }
 
@@ -871,7 +871,7 @@ export default function BookingPage() {
 
         {/* Logo Centré Superposé en Bas */}
         <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-xl">
-          <img src="/logo.jpeg" alt="Barber Box Logo" className="w-full h-full object-cover" />
+          <img src="/logo.jpeg" alt="לוגו ברבר בוקס" className="w-full h-full object-cover" />
         </div>
       </div>
 
@@ -1103,7 +1103,7 @@ export default function BookingPage() {
           <button
             onClick={closeGallery}
             className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition z-10"
-            aria-label="Fermer"
+            aria-label="סגור"
           >
             <X className="w-6 h-6 text-white" />
           </button>
@@ -1115,7 +1115,7 @@ export default function BookingPage() {
               prevPhoto()
             }}
             className="absolute left-4 w-12 h-12 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition z-10"
-            aria-label="Photo précédente"
+            aria-label="תמונה קודמת"
           >
             <ChevronLeft className="w-8 h-8 text-white" />
           </button>
@@ -1130,7 +1130,7 @@ export default function BookingPage() {
           >
             <img
               src={ALL_PHOTOS[currentPhotoIndex]}
-              alt={`Photo ${currentPhotoIndex + 1}`}
+              alt={`תמונה ${currentPhotoIndex + 1}`}
               className="max-w-full max-h-[90vh] object-contain rounded-lg cursor-pointer"
             />
           </div>
@@ -1142,7 +1142,7 @@ export default function BookingPage() {
               nextPhoto()
             }}
             className="absolute right-4 w-12 h-12 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition z-10"
-            aria-label="Photo suivante"
+            aria-label="תמונה הבאה"
           >
             <ChevronRight className="w-8 h-8 text-white" />
           </button>
