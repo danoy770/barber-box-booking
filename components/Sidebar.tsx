@@ -30,7 +30,7 @@ const menuItems = [
     active: true
   },
   {
-    label: "סטטיסטיקות",
+    label: "דוחות",
     icon: PieChart,
     href: "/admin/stats",
     active: false
@@ -55,7 +55,7 @@ const menuItems = [
     hidden: true // Masqué pour l'instant
   },
   {
-    label: "שעות פעילות",
+    label: "שעות פתיחה",
     icon: Clock,
     href: "/admin/hours",
     active: false

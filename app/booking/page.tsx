@@ -197,10 +197,10 @@ const ALL_PHOTOS = [
   '/image9.jpg',
 ]
 
-// Générer les créneaux toutes les 5 minutes (09:00 à 18:00)
+// Générer les créneaux toutes les 10 minutes (06:00 à 22:00) pour couvrir tous horaires possibles
 function generateTimeSlots(): string[] {
   const slots: string[] = []
-  for (let hour = 9; hour < 18; hour++) {
+  for (let hour = 6; hour < 22; hour++) {
     for (let minute = 0; minute < 60; minute += 10) {
       const timeStr = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`
       slots.push(timeStr)
@@ -277,6 +277,7 @@ export default function BookingPage() {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [appointments, setAppointments] = useState<Array<{ date: string; time: string; service_duration: number }>>([])
   const [activeBooking, setActiveBooking] = useState<ActiveBooking | null>(null)
+  const [operatingHours, setOperatingHours] = useState<Array<{ day_of_week: number; is_closed: boolean; start_time: string | null; end_time: string | null }>>([])
 
   const serviceMap = useMemo(() => {
     const map: Record<string, Service> = {}
@@ -296,48 +297,53 @@ export default function BookingPage() {
 
   const totalPrice = selectedServices.reduce((sum, id) => sum + (serviceMap[id]?.price ?? 0), 0)
 
-  // Générer les 14 prochains jours
+  const getHourForDay = (dayOfWeek: number) =>
+    operatingHours.find((r) => r.day_of_week === dayOfWeek)
+
+  // 21 jours max, uniquement les jours où le salon est ouvert
   const availableDates = useMemo(() => {
-    const dates = []
     const today = new Date()
-    for (let i = 0; i < 14; i++) {
-      const date = new Date(today)
-      date.setDate(today.getDate() + i)
-      dates.push(date)
+    today.setHours(0, 0, 0, 0)
+    const dates: Date[] = []
+    for (let i = 0; i < 21; i++) {
+      const d = new Date(today)
+      d.setDate(today.getDate() + i)
+      const hr = getHourForDay(d.getDay())
+      if (hr && !hr.is_closed) dates.push(d)
     }
     return dates
-  }, [])
+  }, [operatingHours])
 
-  // Créneaux filtrés selon la date sélectionnée (exclut les créneaux passés si c'est aujourd'hui)
+  // Créneaux selon שעות פתיחה (start–end) + exclus passés si aujourd'hui
   const filteredTimeSlots = useMemo(() => {
-    if (!selectedDate) return TIME_SLOTS
+    if (!selectedDate) return []
+    const selectedDateObj = new Date(selectedDate + "T12:00:00")
+    const dayOfWeek = selectedDateObj.getDay()
+    const hr = getHourForDay(dayOfWeek)
+    if (!hr || hr.is_closed || !hr.start_time || !hr.end_time) return []
 
-    // Vérifier si la date sélectionnée est aujourd'hui
+    const startMin = timeToMinutes(hr.start_time)
+    const endMin = timeToMinutes(hr.end_time)
+    const duration = selectedServices.reduce(
+      (sum, id) => sum + (serviceMap[id]?.durationMinutes ?? 0),
+      0
+    ) || 20
+
     const today = new Date()
-    const selectedDateObj = new Date(selectedDate)
-    
-    const isToday = 
+    const isToday =
       today.getFullYear() === selectedDateObj.getFullYear() &&
       today.getMonth() === selectedDateObj.getMonth() &&
       today.getDate() === selectedDateObj.getDate()
-
-    if (!isToday) {
-      // Si ce n'est pas aujourd'hui, retourner tous les créneaux
-      return TIME_SLOTS
-    }
-
-    // Si c'est aujourd'hui, filtrer les créneaux passés
-    const now = new Date()
-    const currentHour = now.getHours()
-    const currentMinute = now.getMinutes()
-    const currentTimeInMinutes = currentHour * 60 + currentMinute
+    const nowMin = isToday ? today.getHours() * 60 + today.getMinutes() : -1
 
     return TIME_SLOTS.filter((time) => {
-      const slotTimeInMinutes = timeToMinutes(time)
-      // Garder uniquement les créneaux strictement dans le futur
-      return slotTimeInMinutes > currentTimeInMinutes
+      const slotMin = timeToMinutes(time)
+      if (slotMin < startMin) return false
+      if (slotMin + duration > endMin) return false
+      if (isToday && slotMin <= nowMin) return false
+      return true
     })
-  }, [selectedDate])
+  }, [selectedDate, operatingHours, selectedServices, serviceMap])
 
   // Vérifier si un créneau est disponible en tenant compte de la durée du service
   const isSlotAvailable = (date: string, time: string, serviceDurationMinutes: number) => {
@@ -513,9 +519,8 @@ export default function BookingPage() {
           return
         }
         if (data) {
-          // Transformer les données Supabase en format attendu
           const formattedAppointments = data.map((apt: any) => ({
-            date: apt.date,
+            date: apt.date?.split?.("T")?.[0] ?? apt.date,
             time: apt.time,
             service_duration: apt.service_duration || 30,
           }))
@@ -526,6 +531,35 @@ export default function BookingPage() {
       }
     }
     loadAppointments()
+  }, [])
+
+  // Charger les horaires d'ouverture (שעות פתיחה)
+  useEffect(() => {
+    const loadOperatingHours = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("operating_hours")
+          .select("day_of_week, is_closed, start_time, end_time")
+          .order("day_of_week", { ascending: true })
+        if (error) {
+          console.error("Erreur chargement operating_hours:", error)
+          return
+        }
+        if (data?.length) {
+          setOperatingHours(
+            data.map((r: any) => ({
+              day_of_week: r.day_of_week,
+              is_closed: !!r.is_closed,
+              start_time: r.start_time ?? null,
+              end_time: r.end_time ?? null,
+            }))
+          )
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    loadOperatingHours()
   }, [])
 
   // Charger le booking actif depuis localStorage

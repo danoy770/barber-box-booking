@@ -259,7 +259,7 @@ export default function StatsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-white text-2xl">
                 <PieChart className="w-6 h-6" />
-                סטטיסטיקות
+                דוחות
               </CardTitle>
             </CardHeader>
           </Card>
@@ -279,7 +279,7 @@ export default function StatsPage() {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-white text-2xl">
                 <PieChart className="w-6 h-6" />
-                סטטיסטיקות
+                דוחות
               </CardTitle>
             </CardHeader>
           </Card>
