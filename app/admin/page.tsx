@@ -18,6 +18,8 @@ type Appointment = {
   date: string // YYYY-MM-DD
   time: string // HH:mm
   service_duration?: number // Durée en minutes
+  price?: number // Prix de la prestation
+  isPaid?: boolean // Statut du paiement (undefined = payé par défaut)
 }
 
 // Liste des services disponibles
@@ -62,6 +64,28 @@ const SERVICE_DURATIONS: Record<string, number> = {
   "שעווה": 30,
   "תספורת פרימיום": 45,
   "טיפול פנים + תספורת": 60
+}
+
+// Prix par défaut pour chaque service (en shekels)
+const SERVICE_PRICES: Record<string, number> = {
+  "תספורת גבר/ילד": 50,
+  "תספורת ילד ללא דירוג (עד גיל 13)": 45,
+  "תספורת מדורג מספר חצי ומטה": 60,
+  "תספורת גבר + זקן": 60,
+  "תספורת אברך": 45,
+  "תספורת אברך + זקן": 55,
+  "2 תספורות": 100,
+  "3 תספורות": 150,
+  "תספורת 2 ילדים ללא דירוג": 90,
+  "תספורת 3 ילדים ללא דירוג": 135,
+  "סידור זקן או פס": 20,
+  "הסרת שיער בלייזר מלא": 30,
+  "הסרת שיער בלייזר אזור 1": 30,
+  "תספורת ראשונה לילד (חלאקה)": 0, // Prix par défaut si non défini
+  "תספורת עד הבית": 0,
+  "שעווה": 20,
+  "תספורת פרימיום": 0,
+  "טיפול פנים + תספורת": 0
 }
 
 // Fonction pour formater une durée en minutes en texte hébreu lisible
@@ -192,6 +216,14 @@ function getWeekContainingDate(targetDate: Date): Array<{ date: Date; dateStr: s
   return days
 }
 
+// Fonction helper pour mapper les données de la base de données vers le type Appointment
+function mapAppointmentData(data: any[]): Appointment[] {
+  return data.map((apt: any) => ({
+    ...apt,
+    isPaid: apt.is_paid !== undefined ? apt.is_paid : undefined // undefined = payé par défaut
+  }))
+}
+
 export default function AdminPage() {
   const { toggle } = useSidebar()
   
@@ -203,9 +235,9 @@ export default function AdminPage() {
   
   // Données de test
   const [appointments, setAppointments] = useState<Appointment[]>([
-    { id: 1, client_name: 'David', client_phone: '050-123-4567', service_name: 'תספורת גבר', date: todayDate, time: '10:00', service_duration: 5 },
-    { id: 2, client_name: 'Yossi', client_phone: '050-234-5678', service_name: 'זקן', date: todayDate, time: '10:15', service_duration: 15 },
-    { id: 3, client_name: 'Ariel', client_phone: '050-345-6789', service_name: 'תספורת + זקן', date: todayDate, time: '10:30', service_duration: 30 }
+    { id: 1, client_name: 'David', client_phone: '050-123-4567', service_name: 'תספורת גבר/ילד', date: todayDate, time: '10:00', service_duration: 5, price: 50, isPaid: true },
+    { id: 2, client_name: 'Yossi', client_phone: '050-234-5678', service_name: 'סידור זקן או פס', date: todayDate, time: '10:15', service_duration: 15, price: 20, isPaid: false },
+    { id: 3, client_name: 'Ariel', client_phone: '050-345-6789', service_name: 'תספורת גבר + זקן', date: todayDate, time: '10:30', service_duration: 30, price: 60, isPaid: true }
   ])
   const [isLoading, setIsLoading] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string>(todayDate)
@@ -218,7 +250,9 @@ export default function AdminPage() {
     clientName: '',
     clientPhone: '',
     isPause: false,
-    duration: 30
+    duration: 30,
+    price: 0,
+    isPaid: true // Par défaut, considéré comme payé
   })
   const [isSaving, setIsSaving] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
@@ -257,7 +291,7 @@ export default function AdminPage() {
       try {
         const { data, error } = await supabase
           .from('appointments')
-          .select('id, client_name, client_phone, service_name, date, time, service_duration')
+          .select('id, client_name, client_phone, service_name, date, time, service_duration, price, is_paid')
           .order('date', { ascending: true })
           .order('time', { ascending: true })
 
@@ -268,7 +302,7 @@ export default function AdminPage() {
         }
 
         if (data) {
-          setAppointments(data as Appointment[])
+          setAppointments(mapAppointmentData(data))
         }
       } catch (error) {
         console.error('Erreur lors du chargement des appointments:', error)
@@ -284,7 +318,7 @@ export default function AdminPage() {
 
   // Synchroniser la date du formulaire avec la date sélectionnée
   useEffect(() => {
-    setNewAppointment(prev => ({ ...prev, date: selectedDate, hour: '08', minute: '00', isPause: false, duration: 30 }))
+    setNewAppointment(prev => ({ ...prev, date: selectedDate, hour: '08', minute: '00', isPause: false, duration: 30, price: prev.price || 0, isPaid: prev.isPaid !== undefined ? prev.isPaid : true }))
   }, [selectedDate])
 
   // Mettre à jour l'heure actuelle chaque minute
@@ -676,12 +710,12 @@ export default function AdminPage() {
       } else {
         const { data: allData, error: loadError } = await supabase
           .from('appointments')
-          .select('id, client_name, client_phone, service_name, date, time, service_duration')
+          .select('id, client_name, client_phone, service_name, date, time, service_duration, price, is_paid')
           .order('date', { ascending: true })
           .order('time', { ascending: true })
 
         if (!loadError && allData) {
-          setAppointments(allData as Appointment[])
+          setAppointments(mapAppointmentData(allData))
         }
 
         if (wasAdjusted) {
@@ -771,7 +805,7 @@ export default function AdminPage() {
           if (!error) {
             const { data: allData, error: loadError } = await supabase
               .from('appointments')
-              .select('id, client_name, client_phone, service_name, date, time, service_duration')
+              .select('id, client_name, client_phone, service_name, date, time, service_duration, price, is_paid')
               .order('date', { ascending: true })
               .order('time', { ascending: true })
 
@@ -1011,12 +1045,12 @@ export default function AdminPage() {
         } else {
           const { data: allData, error: loadError } = await supabase
             .from('appointments')
-            .select('id, client_name, client_phone, service_name, date, time, service_duration')
+            .select('id, client_name, client_phone, service_name, date, time, service_duration, price, is_paid')
             .order('date', { ascending: true })
             .order('time', { ascending: true })
 
           if (!loadError && allData) {
-            setAppointments(allData as Appointment[])
+            setAppointments(mapAppointmentData(allData))
           }
 
           setNewAppointment({
@@ -1027,7 +1061,9 @@ export default function AdminPage() {
             clientName: '',
             clientPhone: '',
             isPause: false,
-            duration: 30
+            duration: 30,
+            price: 0,
+            isPaid: true
           })
           setIsModalOpen(false)
           alert('ההפסקה נשמרה בהצלחה')
@@ -1075,7 +1111,9 @@ export default function AdminPage() {
           date: newAppointment.date,
           time: time,
           stylist: 'Dan Cohen',
-          service_duration: adjustedDuration
+          service_duration: adjustedDuration,
+          price: newAppointment.price || 0,
+          is_paid: newAppointment.isPaid !== undefined ? newAppointment.isPaid : true
         }])
         .select()
         .single()
@@ -1086,12 +1124,12 @@ export default function AdminPage() {
       } else {
         const { data: allData, error: loadError } = await supabase
           .from('appointments')
-          .select('id, client_name, client_phone, service_name, date, time, service_duration')
+          .select('id, client_name, client_phone, service_name, date, time, service_duration, price, is_paid')
           .order('date', { ascending: true })
           .order('time', { ascending: true })
 
         if (!loadError && allData) {
-          setAppointments(allData as Appointment[])
+          setAppointments(mapAppointmentData(allData))
         }
 
         setNewAppointment({
@@ -1102,7 +1140,9 @@ export default function AdminPage() {
           clientName: '',
           clientPhone: '',
           isPause: false,
-          duration: 30
+          duration: 30,
+          price: 0,
+          isPaid: true
         })
         setIsModalOpen(false)
         
@@ -1169,8 +1209,8 @@ export default function AdminPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={toggle}
-              className="lg:hidden p-2 rounded-lg bg-slate-800 border border-slate-700 text-white hover:bg-slate-700 transition-colors"
-              aria-label="Toggle menu"
+              className="p-2 rounded-lg bg-slate-800 border border-slate-700 text-white hover:bg-slate-700 transition-colors"
+              aria-label="תפריט"
             >
               <Menu className="w-6 h-6" />
             </button>
@@ -1563,7 +1603,9 @@ export default function AdminPage() {
               clientName: '',
               clientPhone: '',
               isPause: false,
-              duration: 30
+              duration: 30,
+              price: 0,
+              isPaid: true
             })
             setIsModalOpen(true)
           }}
@@ -1683,15 +1725,16 @@ export default function AdminPage() {
                                 } else {
                                   const { data: allData, error: loadError } = await supabase
                                     .from('appointments')
-                                    .select('id, client_name, client_phone, service_name, date, time, service_duration')
+                                    .select('id, client_name, client_phone, service_name, date, time, service_duration, price, is_paid')
                                     .order('date', { ascending: true })
                                     .order('time', { ascending: true })
 
                                   if (!loadError && allData) {
-                                    setAppointments(allData as Appointment[])
-                                    const updated = allData.find(a => a.id === selectedAppointment.id)
+                                    const mappedData = mapAppointmentData(allData)
+                                    setAppointments(mappedData)
+                                    const updated = mappedData.find(a => a.id === selectedAppointment.id)
                                     if (updated) {
-                                      setSelectedAppointment(updated as Appointment)
+                                      setSelectedAppointment(updated)
                                     }
                                   }
                                   setEditingDuration(null)
@@ -1742,19 +1785,122 @@ export default function AdminPage() {
                   <Label className="text-slate-300 mb-2 block">סטטוס תשלום</Label>
                   <div className="flex gap-3">
                     <button
-                      className="flex-1 px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 text-slate-300 hover:bg-slate-600 transition-colors"
-                      disabled
+                      onClick={async () => {
+                        if (!selectedAppointment) return
+                        try {
+                          const { error } = await supabase
+                            .from('appointments')
+                            .update({ is_paid: true })
+                            .eq('id', selectedAppointment.id)
+
+                          if (error) {
+                            console.error('Erreur lors de la mise à jour:', error)
+                            setToastType('error')
+                            setToastMessage(
+                              error.message?.includes('column') || error.message?.includes('does not exist')
+                                ? 'אירעה שגיאה: עמודת is_paid חסרה. הרץ את scripts/supabase-add-is_paid-and-policies.sql ב-Supabase.'
+                                : `אירעה שגיאה בעדכון הסטטוס: ${(error as { message?: string }).message || 'לא ידוע'}`
+                            )
+                            setTimeout(() => {
+                              setToastMessage(null)
+                            }, 5000)
+                          } else {
+                            const { data: allData, error: loadError } = await supabase
+                              .from('appointments')
+                              .select('id, client_name, client_phone, service_name, date, time, service_duration, price, is_paid')
+                              .order('date', { ascending: true })
+                              .order('time', { ascending: true })
+
+                            if (!loadError && allData) {
+                              const mappedData = mapAppointmentData(allData)
+                              setAppointments(mappedData)
+                              const updated = mappedData.find(a => a.id === selectedAppointment.id)
+                              if (updated) {
+                                setSelectedAppointment(updated)
+                              }
+                            }
+                            setToastType('success')
+                            setToastMessage('הסטטוס עודכן בהצלחה')
+                            setTimeout(() => {
+                              setToastMessage(null)
+                            }, 3000)
+                          }
+                        } catch (err) {
+                          console.error('Erreur lors de la mise à jour:', err)
+                          setToastType('error')
+                          setToastMessage(`אירעה שגיאה בעדכון הסטטוס: ${(err as Error)?.message || 'לא ידוע'}`)
+                          setTimeout(() => {
+                            setToastMessage(null)
+                          }, 5000)
+                        }
+                      }}
+                      className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
+                        selectedAppointment.isPaid !== false
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'bg-slate-700 hover:bg-slate-600 text-slate-300 border border-slate-600'
+                      }`}
                     >
                       שולם
                     </button>
                     <button
-                      className="flex-1 px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 text-slate-300 hover:bg-slate-600 transition-colors"
-                      disabled
+                      onClick={async () => {
+                        if (!selectedAppointment) return
+                        try {
+                          const { error } = await supabase
+                            .from('appointments')
+                            .update({ is_paid: false })
+                            .eq('id', selectedAppointment.id)
+
+                          if (error) {
+                            console.error('Erreur lors de la mise à jour:', error)
+                            setToastType('error')
+                            setToastMessage(
+                              error.message?.includes('column') || error.message?.includes('does not exist')
+                                ? 'אירעה שגיאה: עמודת is_paid חסרה. הרץ את scripts/supabase-add-is_paid-and-policies.sql ב-Supabase.'
+                                : `אירעה שגיאה בעדכון הסטטוס: ${(error as { message?: string }).message || 'לא ידוע'}`
+                            )
+                            setTimeout(() => {
+                              setToastMessage(null)
+                            }, 5000)
+                          } else {
+                            const { data: allData, error: loadError } = await supabase
+                              .from('appointments')
+                              .select('id, client_name, client_phone, service_name, date, time, service_duration, price, is_paid')
+                              .order('date', { ascending: true })
+                              .order('time', { ascending: true })
+
+                            if (!loadError && allData) {
+                              const mappedData = mapAppointmentData(allData)
+                              setAppointments(mappedData)
+                              const updated = mappedData.find(a => a.id === selectedAppointment.id)
+                              if (updated) {
+                                setSelectedAppointment(updated)
+                              }
+                            }
+                            setToastType('success')
+                            setToastMessage('הסטטוס עודכן בהצלחה')
+                            setTimeout(() => {
+                              setToastMessage(null)
+                            }, 3000)
+                          }
+                        } catch (err) {
+                          console.error('Erreur lors de la mise à jour:', err)
+                          setToastType('error')
+                          setToastMessage(`אירעה שגיאה בעדכון הסטטוס: ${(err as Error)?.message || 'לא ידוע'}`)
+                          setTimeout(() => {
+                            setToastMessage(null)
+                          }, 5000)
+                        }
+                      }}
+                      className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
+                        selectedAppointment.isPaid === false
+                          ? 'bg-red-600 hover:bg-red-700 text-white'
+                          : 'bg-slate-700 hover:bg-slate-600 text-slate-300 border border-slate-600'
+                      }`}
                     >
                       לא שולם
                     </button>
                   </div>
-                  <p className="text-xs text-slate-500 mt-2 text-center">פונקציונליות תשלום - בקרוב</p>
                 </div>
 
                 <div className="space-y-3 pt-4">
@@ -1897,10 +2043,12 @@ export default function AdminPage() {
                         onChange={(e) => {
                           const selectedService = e.target.value
                           const defaultDuration = SERVICE_DURATIONS[selectedService] || 30
+                          const defaultPrice = SERVICE_PRICES[selectedService] || 0
                           setNewAppointment(prev => ({ 
                             ...prev, 
                             service: selectedService,
-                            duration: defaultDuration
+                            duration: defaultDuration,
+                            price: defaultPrice
                           }))
                         }}
                         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white text-right focus:outline-none focus:ring-2 focus:ring-blue-500"

@@ -16,6 +16,7 @@ type UserBooking = {
   clientName: string
   clientPhone: string
   durationMinutes: number
+  totalPrice?: number
 }
 
 function ConfirmationContent() {
@@ -207,7 +208,9 @@ function ConfirmationContent() {
         time: localStorageBooking.time,
         service_name: serviceName,
         service_duration: localStorageBooking.durationMinutes,
-        stylist: 'Dan Cohen'
+        stylist: 'Dan Cohen',
+        price: localStorageBooking.totalPrice ?? 0,
+        is_paid: true,
       }
       
       console.log('[handleConfirmBooking] Données à insérer:', dataToInsert)

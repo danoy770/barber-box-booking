@@ -30,6 +30,7 @@ type UserBooking = {
   clientName: string
   clientPhone: string
   durationMinutes: number
+  totalPrice: number
 }
 
 type ActiveBooking = {
@@ -133,8 +134,8 @@ const SERVICE_CATEGORIES: ServiceCategory[] = [
         id: "haircut-three",
         name: "3 תספורות",
         price: 150,
-        durationMinutes: 45,
-        durationLabel: "45 דק'",
+        durationMinutes: 50,
+        durationLabel: "50 דק'",
         description: "החל מ",
         hasMinPrice: true,
       },
@@ -156,8 +157,8 @@ const SERVICE_CATEGORIES: ServiceCategory[] = [
         id: "beard-line",
         name: "סידור זקן או פס",
         price: 20,
-        durationMinutes: 10,
-        durationLabel: "10 דק'",
+        durationMinutes: 5,
+        durationLabel: "5 דק'",
         description: "החל מ",
         hasMinPrice: true,
       },
@@ -413,11 +414,11 @@ export default function BookingPage() {
     
     // Sauvegarder le RDV dans localStorage
     if (selectedDate && selectedTime && typeof window !== 'undefined') {
-      // Calculer la durée totale des services sélectionnés
       const totalDuration = selectedServices.reduce((sum, serviceId) => {
         const service = serviceMap[serviceId]
         return sum + (service?.durationMinutes || 0)
       }, 0)
+      const totalPrice = selectedServices.reduce((sum, id) => sum + (serviceMap[id]?.price ?? 0), 0)
 
       const booking: UserBooking = {
         date: selectedDate,
@@ -426,9 +427,9 @@ export default function BookingPage() {
         clientName: clientName.trim(),
         clientPhone: cleanedPhone,
         durationMinutes: totalDuration,
+        totalPrice,
       }
       
-      // Sauvegarder le dernier RDV (pour l'affichage)
       localStorage.setItem('userBooking', JSON.stringify(booking))
       
       // L'enregistrement dans Supabase se fera dans la page de confirmation

@@ -92,8 +92,9 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       {/* Overlay pour mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-40"
           onClick={onToggle}
+          aria-hidden="true"
         />
       )}
 
@@ -103,7 +104,6 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
           fixed right-0 top-0 h-full w-64 bg-slate-900 border-l border-slate-800 z-40
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : 'translate-x-full'}
-          lg:translate-x-0
         `}
         dir="rtl"
       >
@@ -113,8 +113,8 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
             <h2 className="text-xl font-bold text-white">ברבר בוקס</h2>
             <button
               onClick={onToggle}
-              className="lg:hidden p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-              aria-label="Close menu"
+              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              aria-label="סגור תפריט"
             >
               <X className="w-5 h-5" />
             </button>
@@ -131,12 +131,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                   <li key={item.label}>
                     <Link
                       href={item.href}
-                      onClick={() => {
-                        // Fermer le menu sur mobile après clic
-                        if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-                          onToggle()
-                        }
-                      }}
+                      onClick={onToggle}
                       className={`
                         flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
                         ${
